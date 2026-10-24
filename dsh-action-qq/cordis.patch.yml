@@ -1,0 +1,5 @@
+# DSH「逛QQ」（dsh-action-qq）
+# 执行插件：中枢决策 qq 时写 intent.json，这里接活——走 NapCat HTTP 看群、挑话、发出去。
+- insert:
+    - id: action-qq
+      name: 'dsh-action-qq'
