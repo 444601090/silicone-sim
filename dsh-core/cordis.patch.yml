@@ -1,0 +1,8 @@
+# DSH「统筹中枢」（dsh-core）
+# 只激活宿主半边：起一个网页面板 + 几个管理接口。
+#
+# ⚠ id 就是插件的配置命名空间 / 日志前缀；和代码里 export const name 要一致。
+# ⚠ 名字必须是这个包的 name（dsh-core），否则宿主按名字解析不到。
+- insert:
+    - id: core
+      name: 'dsh-core'
