@@ -1,0 +1,42 @@
+{
+  "name": "dsh-behavior",
+  "version": "0.1.0",
+  "description": "行为中枢（dsh-behavior）：设置里的一页「行为」+ 宿主半边。一个调度器、一个状态本，管「主动聊天 / 主动刷站 / 刷完分享」，每 60 秒 tick 一次，靠 agent.followup 让会话自己开一轮；欲望由思维中枢算好，执行完写反馈回去。",
+  "license": "MIT",
+  "type": "module",
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "behavior",
+    "scheduler",
+    "proactive",
+    "initiative"
+  ],
+  "main": "lib/host.js",
+  "exports": {
+    ".": "./lib/host.js",
+    "./client": "./client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "client.js",
+    "cordis.patch.yml",
+    "DESIGN.md",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-settings-plugins"
+      ]
+    }
+  }
+}
