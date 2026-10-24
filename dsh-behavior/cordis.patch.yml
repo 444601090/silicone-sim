@@ -1,0 +1,8 @@
+# DSH「行为中枢」（dsh-behavior）
+# 只激活宿主半边（这个包**没有** client 网页半边，package.json 里也没有 dsh.client）。
+#
+# ⚠ id 就是插件的配置命名空间 / 日志前缀；改成别的也行，但和代码里 export const name 要一致。
+# ⚠ 名字必须是这个包的 name（dsh-behavior），否则宿主按名字解析不到。
+- insert:
+    - id: behavior
+      name: 'dsh-behavior'
