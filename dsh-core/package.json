@@ -1,0 +1,39 @@
+{
+  "name": "dsh-core",
+  "version": "0.1.0",
+  "description": "统筹中枢（dsh-core）：设置页里的「三插件状态」一页 + 宿主侧 /dsh-core 网页面板。集中展示机体 / 思维 / 行为的精力、心情、好感、欲望和今日行为，并提供试运行、总开关、欲望阈值几个按钮。",
+  "license": "MIT",
+  "type": "module",
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "dashboard",
+    "panel"
+  ],
+  "main": "lib/host.js",
+  "exports": {
+    ".": "./lib/host.js",
+    "./client": "./client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "client.js",
+    "cordis.patch.yml",
+    "DESIGN.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-settings-plugins"
+      ]
+    }
+  }
+}
