@@ -1,0 +1,5 @@
+# DSH「更好的视频浏览」（dsh-better-video）
+# 执行插件：中枢决策刷视频时写 intent.json，这里按账号刷一轮。
+- insert:
+    - id: better-video
+      name: 'dsh-better-video'
