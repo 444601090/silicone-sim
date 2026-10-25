@@ -1,0 +1,8 @@
+# DSH「模拟人生」（dsh-simlife）
+# 三合一：机体 + 思维 + 记忆（三块逻辑在 lib/ 里分模块，共享一个插件入口）。
+#
+# ⚠ id 就是插件的配置命名空间 / 日志前缀；和代码里 export const name 要一致。
+# ⚠ 名字必须是这个包的 name（dsh-simlife），否则宿主按名字解析不到。
+- insert:
+    - id: simlife
+      name: 'dsh-simlife'
