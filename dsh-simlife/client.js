@@ -560,6 +560,38 @@ window.__ModuleLoader__.load({
 
 
 
+    // ================= 行为（吃饭/睡觉/发呆） =================
+    function 行为面板() {
+      const [d, setD] = React.useState(null)
+      const 拉 = React.useCallback(async () => {
+        try {
+          setD(await (await fetch('/dsh-action/data')).json())
+        } catch (e) {}
+      }, [])
+      React.useEffect(() => {
+        拉()
+        const t = setInterval(拉, 10000)
+        return () => clearInterval(t)
+      }, [拉])
+      if (!d) return h('div', { 'data-sl-note': '' }, '正在读行为…')
+      const 欲 = d.欲望 || {}
+      const 表 = { eat: '吃饭', sleep: '睡觉', idle: '发呆' }
+      return h('div', { 'data-sl-card': '' },
+        h('div', { 'data-sl-big': '' }, d.当前活动 ? String(d.当前活动.名) : '没事做'),
+        h('div', { 'data-sl-sub': '' }, '正在做'),
+        d.当前活动 && d.当前活动.到
+          ? h('div', { 'data-sl-note': '' }, '剩余 ' + Math.max(0, Math.round((Date.parse(d.当前活动.到) - Date.now()) / 60000)) + ' 分钟')
+          : null,
+        h('div', { 'data-sl-sec': '' }, '内置行为欲望（阈值 ' + (d.阈值 ?? 0.6) + '）'),
+        ...Object.entries(表).map(([键, 名]) =>
+          h('div', { key: 键, 'data-sl-row': '' },
+            h('span', { 'data-sl-label': '' }, 名),
+            h('div', { 'data-sl-bar': '' }, h('i', { style: { width: Math.max(0, Math.min(100, (Number(欲[键]) || 0) * 100)) + '%' } })),
+            h('span', { 'data-sl-sub': '' }, (Number(欲[键]) || 0).toFixed(2)))),
+        h('div', { 'data-sl-note': '' }, '到阈值自动去做；吃饭 20 分钟、发呆 10 分钟、睡觉到自然醒'),
+      )
+    }
+
     // ================= 作用域（下拉） =================
     function 作用域面板() {
       const [d, setD] = React.useState(null)
@@ -612,6 +644,7 @@ window.__ModuleLoader__.load({
         ['机体', 面板_B],
         ['思维', 面板_M],
         ['记忆', 面板_Y],
+        ['行为', 行为面板],
         ['作用域', 作用域面板],
       ]
       const 当前 = (页们.find(([名]) => 名 === 标签) || 页们[0])[1]
