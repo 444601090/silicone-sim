@@ -11,6 +11,7 @@ import { join } from 'node:path'
 import * as 机体 from './mod-body.js'
 import * as 思维 from './mod-mind.js'
 import * as 记忆 from './mod-memory.js'
+import * as 行为 from './mod-action.js'
 
 export const name = 'simlife'
 
@@ -91,6 +92,7 @@ export function apply(ctx) {
     ['机体', 机体],
     ['思维', 思维],
     ['记忆', 记忆],
+    ['行为', 行为],
   ]
   for (const [名, 模] of 模块们) {
     try {
