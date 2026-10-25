@@ -7,7 +7,8 @@
  * 数据：
  *   读  <scope>/mind/state.json  的 desires（思维算好的欲望）
  *   写  <scope>/body/body-patch.json（血糖 +1.5 / 睡觉 true —— 机体消费）
- *   存  <scope>/action/state.json（当前活动）
+ *   存  <scope>/action/state.json（当前活动、上次吃饭/睡觉）
+ *   配  <scope>/action/config.json（自动作息开关）
  * ============================================================================
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
@@ -31,6 +32,7 @@ const 作用域 = (() => {
 
 const 根目录 = 作用域 === '全局' ? 目录 : join(目录, 'scopes', 作用域)
 const 状态文件 = join(根目录, 'action', 'state.json')
+const 配置文件 = join(根目录, 'action', 'config.json')
 const 思维文件 = join(根目录, 'mind', 'state.json')
 const 补丁文件 = join(根目录, 'body', 'body-patch.json')
 
@@ -55,11 +57,21 @@ function 写文件(p, 对象) {
   } catch (error) {}
 }
 
+function 读配置() {
+  const c = 读文件(配置文件, {})
+  return { 自动作息: c.自动作息 !== false }
+}
+
+function 写配置(配置) {
+  写文件(配置文件, 配置)
+}
+
 function 读状态() {
   const s = 读文件(状态文件, {})
   return {
     当前活动: s.当前活动 && typeof s.当前活动 === 'object' ? s.当前活动 : null,
-    上次动作: typeof s.上次动作 === 'string' ? s.上次动作 : null,
+    上次睡觉: typeof s.上次睡觉 === 'string' ? s.上次睡觉 : null,
+    上次吃饭: typeof s.上次吃饭 === 'string' ? s.上次吃饭 : null,
   }
 }
 
@@ -92,6 +104,9 @@ export function apply(ctx) {
   }
 
   const 走一步 = () => {
+    const 配置 = 读配置()
+    if (!配置.自动作息) return
+
     const 状态 = 读状态()
 
     // 正在做的事没到时间 → 不动
@@ -115,26 +130,26 @@ export function apply(ctx) {
 
     const [键, 强] = 名
     const 现在 = Date.now()
+    const 时刻 = new Date(现在).toISOString()
 
     if (键 === 'eat') {
       写补丁({ 血糖: 1.5 })
-      状态.当前活动 = { 名: '吃饭', 开始: new Date(现在).toISOString(), 到: new Date(现在 + 20 * 60000).toISOString() }
-      状态.上次动作 = '吃饭'
+      状态.当前活动 = { 名: '吃饭', 开始: 时刻, 到: new Date(现在 + 20 * 60000).toISOString() }
+      状态.上次吃饭 = 时刻
       写文件(状态文件, 状态)
       体.提示(`自动作息：去吃饭了（欲望 ${Number(强).toFixed(2)}）`)
       return
     }
     if (键 === 'sleep') {
       写补丁({ 睡觉: true })
-      状态.当前活动 = { 名: '睡觉', 开始: new Date(现在).toISOString(), 到: null }
-      状态.上次动作 = '睡觉'
+      状态.当前活动 = { 名: '睡觉', 开始: 时刻, 到: null }
+      状态.上次睡觉 = 时刻
       写文件(状态文件, 状态)
-      体.提示(`自动作息：躺下睡了（欲望 ${Number(强).toFixed(2)}）`)
+      体.提示(`自动作作息：躺下睡了（欲望 ${Number(强).toFixed(2)}）`)
       return
     }
-    // idle：发呆
-    状态.当前活动 = { 名: '发呆', 开始: new Date(现在).toISOString(), 到: new Date(现在 + 10 * 60000).toISOString() }
-    状态.上次动作 = '发呆'
+    // idle：发呆（不记上次）
+    状态.当前活动 = { 名: '发呆', 开始: 时刻, 到: new Date(现在 + 10 * 60000).toISOString() }
     写文件(状态文件, 状态)
     体.提示(`自动作息：发呆去了（欲望 ${Number(强).toFixed(2)}）`)
   }
@@ -159,22 +174,35 @@ export function apply(ctx) {
   try {
     const 服务 = typeof ctx.get === 'function' ? ctx.get('webServer') : undefined
     if (服务 && typeof 服务.register === 'function') {
-      ctx.effect(
-        () =>
-          服务.register({
-            kind: 'exact',
-            path: '/dsh-action/data',
-            handler: async (req, res) => {
-              const 状态 = 读状态()
-              const 欲 = 读欲望() || {}
-              try {
-                res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
-                res.end(JSON.stringify({ 当前活动: 状态.当前活动, 上次动作: 状态.上次动作, 欲望: 欲, 阈值 }))
-              } catch (error) {}
-            },
-          }),
-        'dsh-simlife: 行为接口',
-      )
+      const 注册 = (路径, 处理) =>
+        ctx.effect(() => 服务.register({ kind: 'exact', path: 路径, handler: 处理 }), `dsh-simlife: ${路径}`)
+
+      注册('/dsh-action/data', async (req, res) => {
+        try {
+          const 状态 = 读状态()
+          const 配置 = 读配置()
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ 当前活动: 状态.当前活动, 上次睡觉: 状态.上次睡觉, 上次吃饭: 状态.上次吃饭, 自动作息: 配置.自动作息 }))
+        } catch (error) {}
+      })
+
+      注册('/dsh-action/config', async (req, res) => {
+        try {
+          const 块 = []
+          for await (const 片 of req) 块.push(片)
+          const d = JSON.parse(Buffer.concat(块).toString('utf8') || '{}')
+          const 新 = 读配置()
+          if (typeof d.自动作息 === 'boolean') 新.自动作息 = d.自动作息
+          写配置(新)
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
+          res.end(JSON.stringify({ ok: true, 自动作息: 新.自动作息 }))
+        } catch (error) {
+          try {
+            res.writeHead(400, { 'content-type': 'application/json' })
+            res.end(JSON.stringify({ ok: false }))
+          } catch (error2) {}
+        }
+      })
     }
   } catch (error) {}
 
