@@ -15,6 +15,28 @@ window.__ModuleLoader__.load({
 
     const API_B = '/dsh-body'
 
+    // 主面板 / 行为 / 作用域共用的样式（原版三个 UI 各自带前缀样式，这里是 data-sl-*）
+    const CSS_SL = `
+[data-sl-wrap]{display:flex;flex-direction:column;gap:14px;padding:4px 2px 24px;}
+[data-sl-tabs]{display:flex;gap:8px;flex-wrap:wrap;}
+[data-sl-btn]{padding:7px 14px;border-radius:8px;border:1px solid rgba(127,127,127,.35);background:transparent;color:inherit;font-size:13px;cursor:pointer;}
+[data-sl-btn][data-on]{border-color:rgba(90,170,120,.85);color:rgb(90,170,120);background:rgba(90,170,120,.08);}
+[data-sl-btn]:hover{background:rgba(127,127,127,.12);}
+[data-sl-hero]{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-end;padding:16px 18px;border-radius:12px;background:rgba(127,127,127,.08);}
+[data-sl-metric]{display:flex;flex-direction:column;gap:6px;min-width:110px;}
+[data-sl-big]{font-size:26px;font-weight:600;line-height:1.1;}
+[data-sl-sub]{font-size:12px;opacity:.62;}
+[data-sl-sec]{display:flex;flex-direction:column;gap:8px;padding-top:10px;border-top:1px solid rgba(127,127,127,.18);}
+[data-sl-row]{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;}
+[data-sl-grow]{flex:1;min-width:180px;}
+[data-sl-label]{font-size:13px;}
+[data-sl-note]{font-size:12px;opacity:.6;line-height:1.5;}
+[data-sl-bar]{height:7px;border-radius:4px;background:rgba(127,127,127,.22);overflow:hidden;flex:1;min-width:120px;}
+[data-sl-bar>i]{display:block;height:100%;border-radius:4px;background:rgba(90,170,120,.9);}
+[data-sl-card]{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border-radius:12px;background:rgba(127,127,127,.07);}
+[data-sl-select]{padding:6px 10px;border-radius:7px;border:1px solid rgba(127,127,127,.35);background:transparent;color:inherit;font-size:13px;}
+`
+
     const CSS_B = `
 [data-bd-wrap]{display:flex;flex-direction:column;gap:14px;padding:4px 2px 24px;}
 [data-bd-hero]{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end;padding:14px 16px;border-radius:12px;background:rgba(127,127,127,.08);}
@@ -561,8 +583,18 @@ window.__ModuleLoader__.load({
 
 
     // ================= 行为（吃饭/睡觉/发呆） =================
+    function 时间写(v) {
+      if (!v) return '—'
+      const d = new Date(v)
+      if (!Number.isFinite(d.getTime())) return '—'
+      const 今 = new Date()
+      const 同日 = d.toDateString() === 今.toDateString()
+      return 同日 ? d.toTimeString().slice(0, 5) : `${d.getMonth() + 1}/${d.getDate()} ${d.toTimeString().slice(0, 5)}`
+    }
+
     function 行为面板() {
       const [d, setD] = React.useState(null)
+      const [msg, setMsg] = React.useState('')
       const 拉 = React.useCallback(async () => {
         try {
           setD(await (await fetch('/dsh-action/data')).json())
@@ -573,22 +605,45 @@ window.__ModuleLoader__.load({
         const t = setInterval(拉, 10000)
         return () => clearInterval(t)
       }, [拉])
+      const 切开关 = async () => {
+        try {
+          const r = await fetch('/dsh-action/config', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ 自动作息: !(d && d.自动作息) }),
+          })
+          const j = await r.json()
+          if (j.ok) { setMsg(''); 拉() } else setMsg('切换失败')
+        } catch (e) {
+          setMsg('切换失败')
+        }
+      }
       if (!d) return h('div', { 'data-sl-note': '' }, '正在读行为…')
-      const 欲 = d.欲望 || {}
-      const 表 = { eat: '吃饭', sleep: '睡觉', idle: '发呆' }
-      return h('div', { 'data-sl-card': '' },
-        h('div', { 'data-sl-big': '' }, d.当前活动 ? String(d.当前活动.名) : '没事做'),
-        h('div', { 'data-sl-sub': '' }, '正在做'),
-        d.当前活动 && d.当前活动.到
-          ? h('div', { 'data-sl-note': '' }, '剩余 ' + Math.max(0, Math.round((Date.parse(d.当前活动.到) - Date.now()) / 60000)) + ' 分钟')
-          : null,
-        h('div', { 'data-sl-sec': '' }, '内置行为欲望（阈值 ' + (d.阈值 ?? 0.6) + '）'),
-        ...Object.entries(表).map(([键, 名]) =>
-          h('div', { key: 键, 'data-sl-row': '' },
-            h('span', { 'data-sl-label': '' }, 名),
-            h('div', { 'data-sl-bar': '' }, h('i', { style: { width: Math.max(0, Math.min(100, (Number(欲[键]) || 0) * 100)) + '%' } })),
-            h('span', { 'data-sl-sub': '' }, (Number(欲[键]) || 0).toFixed(2)))),
-        h('div', { 'data-sl-note': '' }, '到阈值自动去做；吃饭 20 分钟、发呆 10 分钟、睡觉到自然醒'),
+      return h('div', { 'data-sl-wrap': '' },
+        h('div', { 'data-sl-hero': '' },
+          h('div', { 'data-sl-metric': '' },
+            h('div', { 'data-sl-big': '' }, 时间写(d.上次睡觉)),
+            h('div', { 'data-sl-sub': '' }, '上次睡觉')),
+          h('div', { 'data-sl-metric': '' },
+            h('div', { 'data-sl-big': '' }, 时间写(d.上次吃饭)),
+            h('div', { 'data-sl-sub': '' }, '上次吃饭')),
+          h('div', { 'data-sl-metric': '' },
+            h('div', { 'data-sl-big': '' }, d.当前活动 ? String(d.当前活动.名) : '没事做'),
+            h('div', { 'data-sl-sub': '' }, '正在做')),
+        ),
+        h('div', { 'data-sl-sec': '' },
+          h('div', { 'data-sl-row': '' },
+            h('div', { 'data-sl-grow': '' },
+              h('div', { 'data-sl-label': '' }, '自动作息'),
+              h('div', { 'data-sl-note': '' }, '开：饿了吃、困了睡、闲了发呆；关：都不动')),
+            h('button', {
+              'data-sl-btn': '',
+              'data-on': d.自动作息 ? '' : undefined,
+              onClick: 切开关,
+            }, d.自动作息 ? '自动作息：开' : '自动作息：关'),
+          ),
+        ),
+        msg ? h('div', { 'data-sl-note': '' }, msg) : null,
       )
     }
 
@@ -661,7 +716,7 @@ window.__ModuleLoader__.load({
       inject: ['slots'],
       apply(ctx) {
         // 三个原版 UI 的样式都挂上（各自的前缀不冲突）
-        const 样式 = [CSS_B, CSS_M, CSS_Y].filter(Boolean).join('\n')
+        const 样式 = [CSS_SL, CSS_B, CSS_M, CSS_Y].filter(Boolean).join('\n')
         const style = document.createElement('style')
         style.setAttribute('data-plugin-css', 'dsh-simlife')
         style.textContent = 样式
